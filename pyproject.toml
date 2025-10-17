@@ -1,0 +1,98 @@
+[project]
+name = "wz-code"
+version = "0.1.0"
+description = "High-performance German economic classification (WZ) library"
+authors = [
+    {name = "Paul Porstendorfer", email = "paul.porstendorfer@bandbyte.com"}
+]
+readme = "README.md"
+requires-python = ">=3.8"
+license = {text = "MIT"}
+keywords = ["wz", "classification", "german", "wirtschaftszweig", "economic", "statistics"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Office/Business",
+    "Topic :: Scientific/Engineering",
+]
+dependencies = []
+
+[project.scripts]
+wz-code = "wz_code.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/bandbyte/wz-code"
+Documentation = "https://github.com/bandbyte/wz-code#readme"
+Repository = "https://github.com/bandbyte/wz-code"
+Issues = "https://github.com/bandbyte/wz-code/issues"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "mypy>=1.0.0",
+    "black>=23.0.0",
+    "ruff>=0.1.0",
+]
+speedups = [
+    "cython>=3.0.0",
+]
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry]
+name = "wz-code"
+version = "0.1.0"
+description = "High-performance German economic classification (WZ) library"
+authors = ["Paul <paul@example.com>"]
+readme = "README.md"
+license = "MIT"
+packages = [{include = "wz_code"}]
+
+[tool.poetry.dependencies]
+python = "^3.8"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.0.0"
+pytest-cov = "^4.0.0"
+mypy = "^1.0.0"
+black = "^23.0.0"
+ruff = "^0.1.0"
+
+[tool.poetry.group.speedups]
+optional = true
+
+[tool.poetry.group.speedups.dependencies]
+cython = "^3.0.0"
+
+[tool.black]
+line-length = 100
+target-version = ["py38", "py39", "py310", "py311", "py312"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py38"
+
+[tool.mypy]
+python_version = "3.8"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --cov=wz_code --cov-report=term-missing"

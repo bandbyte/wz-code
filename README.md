@@ -7,6 +7,7 @@ High-performance Python package for working with German economic activity classi
 - **Zero Configuration**: Install and start using immediately
 - **High Performance**: Sub-millisecond lookups, optimized memory usage
 - **Complete Data**: Embedded WZ 2008 and WZ 2025 classifications
+- **Bidirectional Correspondences**: Map between WZ 2025 and WZ 2008 versions
 - **CLI Tool**: Use directly from command line
 - **Type Safe**: Full type hints for IDE support
 - **Python 3.8+**: Modern Python with backward compatibility
@@ -39,6 +40,19 @@ wz2008 = WZ(version="2008")
 code = wz2008.get("01.11.0")
 print(f"Code: {code.code}, Level: {code.level}")
 print(f"Ancestors: {[a.code for a in code.ancestors]}")
+
+# Find correspondences between WZ versions
+wz = WZ(version="2025")
+code = wz.get("01.13.1")
+correspondences = code.correspondences
+
+for corr in correspondences:
+    match_type = "partial" if corr.is_partial else "full"
+    print(f"{corr.code}: {corr.title} ({match_type} match)")
+# Output:
+# 01.13.1: Anbau von Gemüse und Melonen (full match)
+# 01.19.9: Anbau von sonstigen einjährigen Pflanzen a. n. g. (partial match)
+# 01.28.0: Anbau von Gewürzpflanzen... (partial match)
 ```
 
 ## Command-Line Interface
@@ -97,6 +111,19 @@ wz-code tree A --depth 2
 wz-code tree 01 --json
 ```
 
+### Map between WZ versions
+
+```bash
+# Show correspondences for a code
+wz-code map 01.13.1
+
+# Works with WZ 2008 too
+wz-code map 01.19.9 -v 2008
+
+# JSON output
+wz-code map 01.13.1 --json
+```
+
 ## Development
 
 Install in development mode:
@@ -114,7 +141,10 @@ poetry run pytest
 Generate data modules from XML sources:
 
 ```bash
-poetry run python -m wz_code._build.generator --wz2025 source/WZ_2025_DE_2025-08-19.xml --wz2008 source/WZ_2008_DE_2025-09-29.xml
+poetry run python -m wz_code._build.generator \
+  --wz2025 source/WZ_2025_DE_2025-08-19.xml \
+  --wz2008 source/WZ_2008_DE_2025-09-29.xml \
+  --correspondences source/WZ2025-2025-08-19-Correspondences.xml
 ```
 
 ## License

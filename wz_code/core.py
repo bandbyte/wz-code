@@ -4,7 +4,7 @@ from functools import lru_cache
 from typing import Any
 
 from wz_code.exceptions import WZCodeNotFoundError, WZVersionError
-from wz_code.models import WZVersion
+from wz_code.models import Correspondence, WZVersion
 
 
 class WZCode:
@@ -144,6 +144,22 @@ class WZCode:
         collect_descendants(self)
         return descendants
 
+    @property
+    def correspondences(self) -> list[Correspondence]:
+        """Return correspondences to the other WZ version.
+
+        For WZ 2025 codes, returns corresponding WZ 2008 codes.
+        For WZ 2008 codes, returns corresponding WZ 2025 codes.
+
+        Example:
+            >>> wz = WZ(version="2025")
+            >>> code = wz.get("01.13.1")
+            >>> correspondences = code.correspondences
+            >>> len(correspondences) > 0
+            True
+        """
+        return self._wz.get_correspondences(self._code)
+
     def __str__(self) -> str:
         """Return a string representation of the code."""
         return f"{self._code}: {self._title}"
@@ -201,6 +217,9 @@ class WZ:
         # Load data
         self._data = self._load_data()
 
+        # Load correspondences
+        self._correspondences_forward, self._correspondences_reverse = self._load_correspondences()
+
         # Cache for WZCode instances
         self._code_cache: dict[str, WZCode] = {}
 
@@ -221,6 +240,27 @@ class WZ:
         else:
             # This should never happen due to validation in __init__
             raise WZVersionError(self._version, [v.value for v in WZVersion])
+
+    def _load_correspondences(
+        self,
+    ) -> tuple[dict[str, list[tuple[str, bool, str]]], dict[str, list[tuple[str, str]]]]:
+        """Load correspondence mappings between WZ versions.
+
+        Returns:
+            Tuple of (forward_map, reverse_map) where:
+            - forward_map: WZ 2025 -> WZ 2008 correspondences (code, is_partial, title)
+            - reverse_map: WZ 2008 -> WZ 2025 correspondences (code, title)
+        """
+        try:
+            from wz_code.data.correspondences import (
+                CORRESPONDENCES_2025_TO_2008,
+                CORRESPONDENCES_2008_TO_2025,
+            )
+
+            return CORRESPONDENCES_2025_TO_2008, CORRESPONDENCES_2008_TO_2025
+        except ImportError:
+            # Correspondences not generated yet
+            return {}, {}
 
     @lru_cache(maxsize=512)
     def get(self, code: str) -> WZCode:
@@ -342,6 +382,94 @@ class WZ:
                 results.append(self.get(code))
 
         return results
+
+    def get_correspondences(self, code: str) -> list[Correspondence]:
+        """Get correspondence mappings for a code.
+
+        Args:
+            code: The WZ code to get correspondences for.
+
+        Returns:
+            List of Correspondence objects. Returns empty list if code not found
+            or no correspondences exist.
+
+        Example:
+            >>> wz = WZ(version="2025")
+            >>> correspondences = wz.get_correspondences("01.13.1")
+            >>> len(correspondences) > 0
+            True
+        """
+        # Validate that the code exists
+        if not self.exists(code):
+            return []
+
+        correspondences: list[Correspondence] = []
+
+        if self._version == "2025":
+            # Forward mapping: WZ 2025 -> WZ 2008
+            if code in self._correspondences_forward:
+                for wz2008_code, is_partial, title in self._correspondences_forward[code]:
+                    correspondences.append(
+                        Correspondence(
+                            code=wz2008_code,
+                            title=title,
+                            is_partial=is_partial,
+                            version="2008",
+                        )
+                    )
+        elif self._version == "2008":
+            # Reverse mapping: WZ 2008 -> WZ 2025
+            if code in self._correspondences_reverse:
+                for wz2025_code, title in self._correspondences_reverse[code]:
+                    correspondences.append(
+                        Correspondence(
+                            code=wz2025_code,
+                            title=title,
+                            is_partial=False,  # Reverse mappings don't track partial status
+                            version="2025",
+                        )
+                    )
+
+        return correspondences
+
+    def find_equivalent(self, code: str, target_version: str | WZVersion) -> list[Correspondence]:
+        """Find equivalent codes in a target WZ version.
+
+        This is a convenience method that normalizes the target version and
+        calls get_correspondences().
+
+        Args:
+            code: The WZ code to find equivalents for.
+            target_version: Target WZ version ("2008" or "2025").
+
+        Returns:
+            List of Correspondence objects in the target version.
+
+        Raises:
+            WZVersionError: If target_version is invalid.
+
+        Example:
+            >>> wz = WZ(version="2025")
+            >>> equivalents = wz.find_equivalent("01.13.1", "2008")
+            >>> len(equivalents) > 0
+            True
+        """
+        # Normalize target version
+        if isinstance(target_version, WZVersion):
+            target_ver = target_version.value
+        else:
+            try:
+                target_ver = WZVersion.from_string(target_version).value
+            except ValueError as e:
+                valid_versions = [v.value for v in WZVersion]
+                raise WZVersionError(target_version, valid_versions) from e
+
+        # If target version matches current version, return empty list
+        if target_ver == self._version:
+            return []
+
+        # Otherwise, get correspondences
+        return self.get_correspondences(code)
 
     def __repr__(self) -> str:
         """Return a string representation of the WZ instance."""

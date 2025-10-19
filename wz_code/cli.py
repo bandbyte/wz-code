@@ -197,6 +197,71 @@ def cmd_tree(args: argparse.Namespace) -> int:
         return 1
 
 
+def cmd_map(args: argparse.Namespace) -> int:
+    """Handle 'map' command - show correspondences to other WZ version.
+
+    Args:
+        args: Parsed command-line arguments.
+
+    Returns:
+        Exit code (0 for success, 1 for error).
+    """
+    try:
+        wz = WZ(version=args.version)
+        code = wz.get(args.code)
+        correspondences = code.correspondences
+
+        if args.json:
+            output = {
+                "code": code.code,
+                "title": code.title,
+                "version": code.version,
+                "target_version": "2008" if code.version == "2025" else "2025",
+                "correspondences": [
+                    {
+                        "code": corr.code,
+                        "title": corr.title,
+                        "is_partial": corr.is_partial,
+                        "version": corr.version,
+                    }
+                    for corr in correspondences
+                ],
+            }
+            print(json.dumps(output, indent=2, ensure_ascii=False))
+        else:
+            target_version = "2008" if code.version == "2025" else "2025"
+            print(f"Code: {code.code} (WZ {code.version})")
+            print(f"Title: {code.title}")
+            print()
+
+            if not correspondences:
+                print(f"No correspondences to WZ {target_version} found.")
+            else:
+                print(f"Maps to WZ {target_version}:")
+                print()
+                for corr in correspondences:
+                    match_type = "partial" if corr.is_partial else "full"
+                    symbol = "~" if corr.is_partial else "✓"
+                    print(f"  {symbol} {corr.code}: {corr.title}")
+                    print(f"    ({match_type} match)")
+
+                # Summary
+                full_count = sum(1 for c in correspondences if not c.is_partial)
+                partial_count = sum(1 for c in correspondences if c.is_partial)
+                print()
+                print(f"Total: {len(correspondences)} correspondence(s)")
+                if full_count:
+                    print(f"  Full matches: {full_count}")
+                if partial_count:
+                    print(f"  Partial matches: {partial_count}")
+
+        return 0
+
+    except WZCodeNotFoundError as e:
+        print(f"Error: {e}", file=sys.stderr)
+        return 1
+
+
 def main() -> int:
     """Main CLI entry point.
 
@@ -213,6 +278,7 @@ Examples:
   wz-code search "Landwirtschaft"  # Search for codes
   wz-code list --top-level         # List top-level codes
   wz-code tree A --depth 2         # Show tree view
+  wz-code map 01.13.1              # Show correspondences to other WZ version
   wz-code get 01.11 --json         # Output as JSON
         """,
     )
@@ -313,6 +379,15 @@ Examples:
         help="Maximum depth to display (default: unlimited)",
     )
 
+    # 'map' command
+    parser_map = subparsers.add_parser(
+        "map",
+        parents=[common_parser],
+        help="Show correspondences to other WZ version",
+        description="Display correspondences between WZ 2025 and WZ 2008 versions.",
+    )
+    parser_map.add_argument("code", help="WZ code to get correspondences for")
+
     # Parse arguments
     args = parser.parse_args()
 
@@ -330,6 +405,8 @@ Examples:
         return cmd_list(args)
     elif args.command == "tree":
         return cmd_tree(args)
+    elif args.command == "map":
+        return cmd_map(args)
     else:
         parser.print_help()
         return 1

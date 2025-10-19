@@ -19,13 +19,14 @@ from wz_code.exceptions import (
     WZVersionError,
     WZDataError,
 )
-from wz_code.models import WZVersion
+from wz_code.models import Correspondence, WZVersion
 
 __version__ = "0.1.0"
 __all__ = [
     "WZ",
     "WZCode",
     "WZVersion",
+    "Correspondence",
     "WZCodeError",
     "WZCodeNotFoundError",
     "WZVersionError",

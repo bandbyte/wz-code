@@ -1,5 +1,6 @@
 """Data models and type definitions for the wz-code package."""
 
+from dataclasses import dataclass
 from enum import Enum
 from typing import TypedDict
 
@@ -80,3 +81,45 @@ class WZCodeData(TypedDict):
     title: str
     level: int
     version: str
+
+
+@dataclass(frozen=True)
+class Correspondence:
+    """Represents a correspondence between WZ classification versions.
+
+    A correspondence maps a code from one WZ version to a code in another version.
+    Correspondences can be either full (exact equivalents) or partial (only part
+    of the code's scope maps to the target).
+
+    Attributes:
+        code: The corresponding code in the target version.
+        title: German description of the corresponding code.
+        is_partial: True if this is a partial match (marked "ex" in source data).
+        version: The WZ version of the corresponding code ("2008" or "2025").
+
+    Example:
+        >>> # WZ 2025 code 01.13.1 maps to multiple WZ 2008 codes
+        >>> Correspondence(
+        ...     code="01.13.1",
+        ...     title="Anbau von Gemüse und Melonen",
+        ...     is_partial=False,
+        ...     version="2008"
+        ... )
+    """
+
+    code: str
+    title: str
+    is_partial: bool
+    version: str
+
+    def __str__(self) -> str:
+        """Return a string representation of the correspondence."""
+        match_type = "partial" if self.is_partial else "full"
+        return f"{self.code}: {self.title} ({match_type})"
+
+    def __repr__(self) -> str:
+        """Return a detailed string representation."""
+        return (
+            f"Correspondence(code={self.code!r}, "
+            f"is_partial={self.is_partial}, version={self.version!r})"
+        )

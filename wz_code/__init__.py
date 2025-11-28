@@ -21,7 +21,7 @@ from wz_code.exceptions import (
 )
 from wz_code.models import Correspondence, WZVersion
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 __all__ = [
     "WZ",
     "WZCode",

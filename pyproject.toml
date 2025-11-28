@@ -1,6 +1,6 @@
 [project]
 name = "wz-code"
-version = "0.1.0"
+version = "0.2.0"
 description = "High-performance German economic classification (WZ) library"
 authors = [
     {name = "Paul Porstendorfer", email = "paul.porstendorfer@bandbyte.com"}
@@ -52,7 +52,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "wz-code"
-version = "0.1.0"
+version = "0.2.0"
 description = "High-performance German economic classification (WZ) library"
 authors = ["Paul <paul@example.com>"]
 readme = "README.md"

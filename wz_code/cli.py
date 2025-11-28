@@ -317,7 +317,7 @@ Examples:
     parser.add_argument(
         "--version-info",
         action="version",
-        version="%(prog)s 0.1.0",
+        version="%(prog)s 0.2.0",
         help="Show version information",
     )
 

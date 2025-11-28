@@ -6,7 +6,6 @@ import sys
 from typing import Any
 
 from wz_code import WZ, WZCode, WZCodeNotFoundError
-from wz_code.models import WZVersion
 
 
 def format_code_info(code: WZCode, verbose: bool = False) -> dict[str, Any]:
@@ -157,38 +156,70 @@ def cmd_tree(args: argparse.Namespace) -> int:
     """
     try:
         wz = WZ(version=args.version)
+
+        # Treat depth=0 as unlimited
+        max_depth = None if args.depth == 0 else args.depth
+
+        # Helper functions for tree building/printing
+        def build_tree(
+            code: WZCode, max_depth: int | None = None, current_depth: int = 0
+        ) -> dict[str, Any]:
+            tree: dict[str, Any] = format_code_info(code)
+            if max_depth is None or current_depth < max_depth:
+                tree["children_tree"] = [
+                    build_tree(child, max_depth, current_depth + 1)
+                    for child in code.children
+                ]
+            return tree
+
+        def print_tree_recursive(
+            code: WZCode,
+            prefix: str = "",
+            max_depth: int | None = None,
+            current_depth: int = 0,
+        ) -> None:
+            if max_depth is not None and current_depth >= max_depth:
+                return
+            for i, child in enumerate(code.children):
+                is_last = i == len(code.children) - 1
+                connector = "└── " if is_last else "├── "
+                print(f"{prefix}{connector}{child.code}: {child.title}")
+                if child.children:
+                    next_prefix = prefix + ("    " if is_last else "│   ")
+                    print_tree_recursive(child, next_prefix, max_depth, current_depth + 1)
+
+        # If no code specified, show all top-level sections
+        if args.code is None:
+            top_level_codes = wz.get_top_level_codes()
+
+            if args.json:
+                output = [build_tree(code, max_depth) for code in top_level_codes]
+                print(json.dumps(output, indent=2, ensure_ascii=False))
+            else:
+                print(f"WZ {args.version} Classification Tree ({len(top_level_codes)} sections):")
+                print()
+                for i, code in enumerate(top_level_codes):
+                    is_last = i == len(top_level_codes) - 1
+                    connector = "└── " if is_last else "├── "
+                    print(f"{connector}{code.code}: {code.title}")
+                    if code.children and (max_depth is None or max_depth > 0):
+                        next_prefix = "    " if is_last else "│   "
+                        effective_depth = max_depth - 1 if max_depth is not None else None
+                        print_tree_recursive(code, next_prefix, effective_depth, 0)
+
+            return 0
+
+        # Single code tree view
         root_code = wz.get(args.code)
 
         if args.json:
-            def build_tree(code: WZCode, max_depth: int | None = None, current_depth: int = 0) -> dict[str, Any]:
-                tree: dict[str, Any] = format_code_info(code)
-                if max_depth is None or current_depth < max_depth:
-                    tree["children_tree"] = [
-                        build_tree(child, max_depth, current_depth + 1)
-                        for child in code.children
-                    ]
-                return tree
-
-            output = build_tree(root_code, args.depth)
+            output = build_tree(root_code, max_depth)
             print(json.dumps(output, indent=2, ensure_ascii=False))
         else:
-            def print_tree(code: WZCode, prefix: str = "", max_depth: int | None = None, current_depth: int = 0) -> None:
-                print(f"{prefix}{code.code}: {code.title}")
-                if max_depth is None or current_depth < max_depth:
-                    for i, child in enumerate(code.children):
-                        is_last = i == len(code.children) - 1
-                        child_prefix = prefix + ("└── " if is_last else "├── ")
-                        next_prefix = prefix + ("    " if is_last else "│   ")
-                        print(f"{child_prefix}{child.code}: {child.title}")
-                        if child.children and (max_depth is None or current_depth + 1 < max_depth):
-                            for j, grandchild in enumerate(child.children):
-                                is_last_gc = j == len(child.children) - 1
-                                gc_prefix = next_prefix + ("└── " if is_last_gc else "├── ")
-                                print(f"{gc_prefix}{grandchild.code}: {grandchild.title}")
-
             print(f"Tree for {root_code.code} (WZ {args.version}):")
             print()
-            print_tree(root_code, max_depth=args.depth)
+            print(f"{root_code.code}: {root_code.title}")
+            print_tree_recursive(root_code, "", max_depth, 0)
 
         return 0
 
@@ -369,14 +400,21 @@ Examples:
         "tree",
         parents=[common_parser],
         help="Display hierarchical tree view",
-        description="Display a tree view of a code and its descendants.",
+        description="Display a tree view of a code and its descendants. "
+        "If no code is specified, shows the top-level sections.",
     )
-    parser_tree.add_argument("code", help="Root code for tree view")
+    parser_tree.add_argument(
+        "code",
+        nargs="?",
+        default=None,
+        help="Root code for tree view (default: show all top-level sections)",
+    )
     parser_tree.add_argument(
         "-d",
         "--depth",
         type=int,
-        help="Maximum depth to display (default: unlimited)",
+        default=2,
+        help="Maximum depth to display (default: 2, use 0 for unlimited)",
     )
 
     # 'map' command
